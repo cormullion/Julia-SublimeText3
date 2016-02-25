@@ -1,0 +1,156 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+
+# a work in progress
+# I prefer really really simple syntax files,
+# so that I can understand everything in a year's time
+# and so that there aren't too many distracting color changes
+
+# header
+
+name: Julia
+
+comment: "Julia Syntax: version 0.1, a highly simplified Sublime-Syntax file"
+
+file_extensions:
+
+  - jl
+
+# this will match the first line of a Julia script file
+
+first_line_match: ^#!/.*\bjulia\d?\b
+
+scope: source.julia
+
+# variable names are defined first, at top level, so that they
+# can be referenced in patterns.
+# We'll be able to use {{name}} later to refer to a variable name
+
+variables:
+
+  name: '[A-Za-z_][A-Za-z_0-9!]*'
+
+# main contexts
+
+contexts:
+
+  main:
+
+  # these contexts are defined below, and get included here
+
+    - include: comment
+    - include: string
+    - include: character
+    - include: keyword
+    - include: function
+
+  # comment context
+
+  comment:
+    # line comment
+    # lookahead for # followed by no equals sign
+    - match: (#)(?!=).*$\n?
+      scope: comment.line.julia
+      captures:
+        1: punctuation.definition.comment.julia
+    # block comment
+    - match: '(#=)'
+      captures:
+        1: punctuation.definition.comment.begin.julia
+      push:
+        - meta_scope: comment.block.julia
+        - match: '=#'
+          captures:
+            1: punctuation.definition.comment.end.julia
+          pop: true
+
+  # string context
+  # strings might contain $() interpolation, which is dificult to do (nested...)
+  # TODO fix problems with backslashed quotes in strings
+  # ie from datafmt.jl, this fails:
+  # unescaped = replace(SubString(sbuff, startpos, endpos), r"\"\"", "\"")
+
+  string:
+    - meta_scope: string.julia
+
+    # single doublequote
+
+    - match: '"'
+      scope: string.single.julia
+      push:
+        - meta_scope: string.single.julia
+        - match: '"'
+          scope: string.single.julia
+          pop: true
+        - match: '(\$)'
+          captures:
+            1: source.julia
+          push:
+            # to close, look for lots of closing parentheses, best I can do, I think
+            - match: '\((.*?)\)+'
+              scope: source.julia
+              pop: true
+            - match: '{{name}}' # might be a variable
+              scope: source.julia
+              pop: true
+            - include: main
+
+    # triple doublequote
+
+    - match: '"""'
+      scope: string.triple.julia
+      push:
+        - match: '"""'
+          pop: true
+
+        - match: '(\$)'
+          captures:
+            1: source.julia
+          push:
+            - match: '\((.*?)\)+' # look for lots of parentheses
+              scope: source.julia
+              pop: true
+            - include: main
+
+  # the character context, look for things inside single quotes:
+
+  character:
+    - meta_scope: string.quoted.single.julia
+    - match: "'(?=.)[^ ]" # try to avoid catching the transpose() operator...
+      scope: string.quoted.single.julia
+      push:
+        - match: "(.*?)'"
+          scope: string.quoted.single.julia
+          pop: true
+          captures:
+            1: string.quoted.single.julia
+
+  # The keyword context. I'm not going to bother with doing every single
+  # word in Julia...
+
+  keyword:
+
+    - match: \b(?:function|stagedfunction|type|immutable|macro|quote|abstract|bitstype|typealias|module|baremodule|new|if|else|elseif|while|for|begin|end|quote|try|catch|return|local|abstract|macro|ccall|finally|typealias|break|continue|type|global|module|using|import|export|const|throw|let|bitstype|do|in|baremodule|importall|immutable)\b
+      scope: keyword.control.julia
+
+    - match: \b(?:true|false)\b
+      scope: keyword.constant.boolean.julia
+
+    - match: \b(?:global|local|const|export|import|importall|using)\b
+      scope: storage.modifier.variable.julia
+
+    - match: \b(?:Dict|Range|AbstractString|ASCIIString|UTF8String|String|AbstractArray|Array|Tuple|Set|Char|Expr|Bool|Pair|Union)\b
+      scope: storage.modifier.variable.julia
+
+    # types might as well go in
+
+    - match: \b(?:Real|Number|Type|Integer|Int|Int8|Int16|Int32|Int64|Int128|UInt|UInt8|UInt16|UInt32|UInt64|UInt128|Float32|Float64|BigInt|BigFloat|Complex|NaN|Inf|Ptr|Void|Function)\b
+      scope: storage.modifier.variable.julia
+
+  # some misc functions
+
+  function:
+
+    - match: \b(?:println|print)\b
+      scope: keyword.function.julia
