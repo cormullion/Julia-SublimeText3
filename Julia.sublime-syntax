@@ -1,0 +1,122 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+
+# a work in progress
+# I prefer really really simple syntax files,
+# so that I can understand everything in a year's time
+# and so that there aren't too many distracting color changes
+
+# tested with the Cobalt colorscheme, which has lots of scopes
+
+# header
+
+name: Julia
+
+comment: "Julia Syntax: version 0.1, a highly simplified Sublime-Syntax file"
+
+file_extensions:
+
+  - jl
+
+# first line of a Julia script file
+
+first_line_match: ^#!/.*\bjulia\b.*$
+
+scope: source.julia
+
+variables:
+
+  name: '[A-Za-z_][A-Za-z_0-9!]*'
+
+contexts:
+
+  main:
+    - match: '#=' # look for block comment
+      push: comment_block
+
+    - match: '#' # look for line comment
+      push: comment_line
+
+    - match: '"""' # look for triple doublequote string first
+      push: string_triple
+
+    - match: '"' # look for single doublequote string
+      push: string
+
+    - match: "'" # look for character
+      push: character
+
+    - include: keywords
+
+  string_triple:
+    - meta_scope: string.triple.julia
+    - match: \$\( # $( means start of interpolation
+      push: interpolated_parenthesis
+    - match: \$(\b(.*?))
+      captures:
+        0: source.julia
+      push: interpolated_symbol
+    - match: '"""'
+      pop: true
+
+  string:
+    - meta_scope: string.single.julia
+    - match: (\$\()
+      push: interpolated_parenthesis
+    - match: '\\"' # do nothing for a single backslashed quote
+    - match: \$(\b) # start of interpolated symbol
+      push: interpolated_symbol
+    - match: '"'
+      pop: true
+
+  comment_block:
+    - meta_scope: comment.block.julia
+    - match: '=#'
+      scope: comment.block.julia
+      pop: true
+
+  comment_line:
+    - meta_scope: comment.julia
+    - match: '$'
+      pop: true
+
+  interpolated_parenthesis:
+    - meta_scope: source.interpolated.julia
+    - match: '\(' # nested parentheses
+      push: interpolated_parenthesis
+    - match: '(\))'
+      pop: true
+    - include: main
+
+  interpolated_symbol: # they don't always use parentheses in interpolation
+    - meta_scope: source.interpolated.julia
+    - match: (?="| |\W) # space or non-word character terminates interpolation
+      pop: true
+
+  # still problems with transpose() operator...
+  character:
+    - meta_scope: string.character.julia
+    - match: "'"
+      scope: string.character.julia
+      pop: true
+
+  keywords:
+
+    - match: \b(?:function|stagedfunction|type|immutable|macro|quote|abstract|bitstype|typealias|module|baremodule|new|if|else|elseif|while|for|begin|end|quote|try|catch|return|local|abstract|macro|ccall|finally|typealias|break|continue|type|global|module|using|import|export|const|throw|let|bitstype|do|in|baremodule|importall|immutable)\b
+      scope: keyword.control.julia
+
+    - match: \b(?:true|false)\b
+      scope: keyword.constant.boolean.julia
+
+    - match: \b(?:global|local|const|export|import|importall|using)\b
+      scope: storage.modifier.variable.julia
+
+    - match: \b(?:Dict|Range|AbstractString|ASCIIString|UTF8String|String|AbstractArray|Array|Tuple|Set|Char|Expr|Bool|Pair|Union)\b
+      scope: storage.modifier.variable.julia
+
+    # types go in too? or are there too many of them...?
+
+    #- match: \b(?:Real|Number|Type|Integer|Int|Int8|Int16|Int32|Int64|Int128|UInt|UInt8|UInt16|UInt32|UInt64|UInt128|Float32|Float64|BigInt|BigFloat|Complex|NaN|Inf|Ptr|Void|Function)\b
+    #  scope: storage.modifier.variable.julia
+
